@@ -52,3 +52,11 @@ help?> @trace
   0: fibo(3) -> 3
   3
 ```
+
+## Known issues
+
+* Tracing functions with keyword arguments is currently tricky, i.e.,
+  `@trace reduce(+, 1:2; init=0) reduce` will not show any trace
+  output and `@trace reduce(+, 1:2; init=0)
+  Base.var"#reduce##kw".instance` is needed instead to see the
+  corresponding calls.
