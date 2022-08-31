@@ -1,5 +1,5 @@
 
-using TraceMe
+using TraceFuns
 
 using Test
 using Suppressor

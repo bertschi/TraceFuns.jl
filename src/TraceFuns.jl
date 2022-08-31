@@ -1,4 +1,4 @@
-module TraceMe
+module TraceFuns
 
 export @trace
 
