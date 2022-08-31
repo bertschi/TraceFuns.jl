@@ -1,4 +1,4 @@
-# TraceMe.jl
+# TraceFuns.jl
 
 The `trace` facility of Common Lisp has always been my favourite tool
 for debugging or interactively exploring a code base. Yet, it seems to
