@@ -45,6 +45,8 @@ end
 Trace all calls of the listed `funs` during evaluation of `expr`.
 If `funs` includes the symbol `:all` all function calls are traced.
 
+Multiple functions may also be provided with `@trace expr fun1, fun2` in addition to the usual `@trace(expr, fun1, fun2)`.
+
 # Examples
 ```julia-repl
 julia> @trace 1 + 2 Base.:+
@@ -52,6 +54,21 @@ julia> @trace 1 + 2 Base.:+
 0: +(1, 2) -> 3
 3
 ```
+
+```julia-repl
+julia> @trace 1 * 2.0 Base.:*, Base.promote
+0: *(1, 2.0) -- Method *(x::Number, y::Number) @ Base promotion.jl:411
+   1: promote(1, 2.0) -- Method promote(x, y) @ Base promotion.jl:379
+   1: promote(1, 2.0) -> (1.0, 2.0)
+   1: *(1.0, 2.0) -- Method *(x::T, y::T) where T<:Union{Float16, Float32, Float64} @ Base float.jl:410
+   1: *(1.0, 2.0) -> 2.0
+0: *(1, 2.0) -> 2.0
+2.0
+
+julia> @trace(1 * 2.0, Base.:*, Base.promote)
+0: *(1, 2.0) -- Method *(x::Number, y::Number) @ Base promotion.jl:411
+[...]
+````
 
 Be careful using `:all` as the output may be long ...
 ```julia-repl
@@ -89,6 +106,11 @@ julia> @trace fibo(3) fibo
 """
 macro trace(expr, funs...)
     expresc = esc(expr)
+    if funs isa Tuple{Expr}
+        # macro was called as @trace expr fun1,fun2
+        # funs is something like (:((fun1, fun2)),), ie. Expr(:tuple, [:fun1, :fun2])
+        funs = funs[1].args
+    end
     funsesc = esc.(funs)
     :(Cassette.overdub(TraceCtx(metadata = (funs = [$(funsesc...)], indent = -1)), () -> $expresc))
 end
