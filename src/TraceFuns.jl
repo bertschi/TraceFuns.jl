@@ -108,7 +108,7 @@ macro trace(expr, funs...)
     expresc = esc(expr)
     if funs isa Tuple{Expr}
         # macro was called as @trace expr fun1,fun2
-        # funs is something like (:((fun1, fun2)),), ie. Expr(:tuple, [:fun1, :fun2])
+        # funs is something like (:((fun1, fun2)),), ie. (Expr(:tuple, [:fun1, :fun2]),)
         funs = funs[1].args
     end
     funsesc = esc.(funs)
