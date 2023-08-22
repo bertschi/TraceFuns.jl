@@ -17,19 +17,25 @@ function callstr(fun, args)
     "$fun($fargs)"
 end
 
+match(meth, fun::Function) = meth.name == nameof(fun)
+match(meth, fun::Symbol) = fun == :all
+match(meth, fun::Module) = meth.module == fun
+
 function Cassette.overdub(ctx::TraceCtx, fun::Function, args...)
-    needprint = :all in ctx.metadata.funs || fun in ctx.metadata.funs
+    meth = which(fun, Base.typesof(args...))
+    needprint = any(match(meth, fun) for fun in ctx.metadata.funs)
     if needprint && ctx.metadata.indent ≥ 0
-        if fun isa Core.Builtin
-            meth = "Primitive $fun"
-        else
-            meth = "Method $(which(fun, Base.typesof(args...)))"
-        end
-        println(indent(ctx.metadata.indent, "$(callstr(fun, args)) -- $meth"))
+        methstr = "Method $meth of $fun"
+        println(indent(ctx.metadata.indent, "$(callstr(fun, args)) -- $methstr"))
     end
     if Cassette.canrecurse(ctx, fun, args...)
         newctx = Cassette.similarcontext(ctx, metadata = (funs = ctx.metadata.funs, indent = ctx.metadata.indent + 1))
-        res = Cassette.recurse(newctx, fun, args...)
+        # Note: Work around potential Cassette bugs ...
+        try
+            res = Cassette.recurse(newctx, fun, args...)
+        catch
+            res = Cassette.fallback(ctx, fun, args...)
+        end
     else
         res = Cassette.fallback(ctx, fun, args...)
     end
