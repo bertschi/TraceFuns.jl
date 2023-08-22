@@ -12,7 +12,7 @@ function indent(i::Int, s::String)
     join(fill("", _indent * i), " ") * "$i: " * s
 end
 
-function call(fun, args)
+function callstr(fun, args)
     fargs = join(args, ", ")
     "$fun($fargs)"
 end
@@ -25,7 +25,7 @@ function Cassette.overdub(ctx::TraceCtx, fun::Function, args...)
         else
             meth = "Method $(which(fun, Base.typesof(args...)))"
         end
-        println(indent(ctx.metadata.indent, "$(call(fun, args)) -- $meth"))
+        println(indent(ctx.metadata.indent, "$(callstr(fun, args)) -- $meth"))
     end
     if Cassette.canrecurse(ctx, fun, args...)
         newctx = Cassette.similarcontext(ctx, metadata = (funs = ctx.metadata.funs, indent = ctx.metadata.indent + 1))
@@ -34,7 +34,7 @@ function Cassette.overdub(ctx::TraceCtx, fun::Function, args...)
         res = Cassette.fallback(ctx, fun, args...)
     end
     if needprint && ctx.metadata.indent ≥ 0
-        println(indent(ctx.metadata.indent, "$(call(fun, args)) -> $res"))
+        println(indent(ctx.metadata.indent, "$(callstr(fun, args)) -> $res"))
     end
     res
 end
