@@ -24,13 +24,13 @@ match(meth, fun::Module) = meth.module == fun
 
 function Cassette.overdub(ctx::TraceCtx, fun::Function, args...)
     meth = which(fun, Base.typesof(args...))
-    needprint = any(match(meth, fun) for fun in ctx.metadata.funs)
+    needprint = length(ctx.metadata.funs) == 0 || any(match(meth, fun) for fun in ctx.metadata.funs)
     if needprint && ctx.metadata.indent ≥ 0
         methstr = "Method $meth of $fun"
         println(indent(ctx.metadata.indent, "$(callstr(fun, args)) -- $methstr"))
     end
     if Cassette.canrecurse(ctx, fun, args...)
-        newctx = Cassette.similarcontext(ctx, metadata = (funs = ctx.metadata.funs, indent = ctx.metadata.indent + 1))
+        newctx = Cassette.similarcontext(ctx, metadata=(funs=ctx.metadata.funs, indent=ctx.metadata.indent + 1))
         # Note: Work around potential Cassette bugs ...
         try
             res = Cassette.recurse(newctx, fun, args...)
@@ -144,7 +144,7 @@ julia> tracing(Base, fac) do
 See [`@trace`](@ref) for further details.
 """
 function tracing(thunk, funs...)
-    Cassette.overdub(TraceCtx(metadata = (funs = [funs...], indent = -1)), thunk)
+    Cassette.overdub(TraceCtx(metadata=(funs=[funs...], indent=-1)), thunk)
 end
 
 end # module
