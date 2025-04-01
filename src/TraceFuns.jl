@@ -27,10 +27,19 @@ function Cassette.overdub(ctx::TraceCtx, fun::Function, args...)
     needprint = any(match(meth, fun) for fun in ctx.metadata.funs)
     if needprint && ctx.metadata.indent ≥ 0
         methstr = "Method $meth of $fun"
-        println(indent(ctx.metadata.indent, "$(callstr(fun, args)) -- $methstr"))
+        prefix = ctx.metadata.show_call ? "$(callstr(fun, args)) -- " : ""
+        println(indent(ctx.metadata.indent, "$prefix$methstr"))
     end
     if Cassette.canrecurse(ctx, fun, args...)
-        newctx = Cassette.similarcontext(ctx, metadata = (funs = ctx.metadata.funs, indent = ctx.metadata.indent + 1))
+        newctx = Cassette.similarcontext(
+            ctx,
+            metadata = (
+                funs = ctx.metadata.funs,
+                indent = ctx.metadata.indent + 1,
+                show_call = ctx.metadata.show_call,
+                show_return = ctx.metadata.show_return,
+            )
+        )
         # Note: Work around potential Cassette bugs ...
         try
             res = Cassette.recurse(newctx, fun, args...)
@@ -40,18 +49,23 @@ function Cassette.overdub(ctx::TraceCtx, fun::Function, args...)
     else
         res = Cassette.fallback(ctx, fun, args...)
     end
-    if needprint && ctx.metadata.indent ≥ 0
+    if needprint && ctx.metadata.indent ≥ 0 && ctx.metadata.show_return
         println(indent(ctx.metadata.indent, "$(callstr(fun, args)) -> $res"))
     end
     res
 end
 
 """
-    @trace expr [funs...]
+    @trace expr [funs...] [show_call = true, show_return = true]
 
 Trace all calls of the listed `funs` during evaluation of `expr`.
 If `funs` includes the symbol `:all` all function calls are traced.
 If `funs` includes one or more modules, all functions from the corresponding modules are traced. 
+
+# Options
+- `show_call`: whether to print the function call (default: `true`)
+- `show_return`: whether to print the function return value (default: `true`)
+Setting one or both of these to `false` can be useful to reduce the output.
 
 # Examples
 ```julia-repl
@@ -97,18 +111,32 @@ julia> @trace fibo(3) fibo
 
 See also [`tracing`](@ref) for the functional interface.
 """
-macro trace(expr, funs...)
+macro trace(expr, args...)
+    funs = []
+    kwargs = Pair{Symbol,Bool}[]
+    for el in args
+        if Meta.isexpr(el, :(=))
+            push!(kwargs, Pair(el.args...))
+        else
+            push!(funs, el)
+        end
+    end
     expresc = esc(expr)
     funsesc = esc.(funs)
-    :(tracing(() -> $expresc, $(funsesc...)))
+    :(tracing(() -> $expresc, $(funsesc...); $kwargs...))
 end
 
 """
-    tracing(funs...) do
+    tracing(funs...; show_call = true, show_return = true) do
         expr
     end
 
 Trace all calls of the listed `funs` during evaluation of `expr`.
+
+# Keyword arguments
+- `show_call`: whether to print the function call (default: `true`)
+- `show_return`: whether to print the function return value (default: `true`)
+Setting one or both of these to `false` can be useful to reduce the output.
 
 # Examples
 ```julia-repl
@@ -143,8 +171,9 @@ julia> tracing(Base, fac) do
 
 See [`@trace`](@ref) for further details.
 """
-function tracing(thunk, funs...)
-    Cassette.overdub(TraceCtx(metadata = (funs = [funs...], indent = -1)), thunk)
+function tracing(thunk, funs...; show_call::Bool = true, show_return::Bool = true)
+    ctx = TraceCtx(metadata = (funs = [funs...], indent = -1, show_call, show_return))
+    Cassette.overdub(ctx, thunk)
 end
 
 end # module
